@@ -1,3 +1,5 @@
+import os
+import torch
 from torch import nn
 
 
@@ -15,3 +17,10 @@ class DQN(nn.Module):
 
     def forward(self, x):
         return self.dqn(x)
+
+    def from_pretrained(self, model_path: str) -> None:
+        """Load the trained model"""
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f'model not found in "{model_path}"')
+
+        self.load_state_dict(torch.load(model_path))
