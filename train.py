@@ -21,8 +21,9 @@ num_points_for_average = 100
 epsilon_in = 1.0
 soft_update_tau = 1e-3
 epsilon_decay_rate = 0.995
-min_epsilon = 0.01
-save_model = True
+min_epsilon = 0.001
+save_checkpoint = True
+resume_from_checkpoint = False
 output_dir = os.path.join(os.path.dirname(__file__), "output")
 
 experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "terminated"])
@@ -104,14 +105,14 @@ def train_agent(epsilon):
                 f"Epsilon: {epsilon:.4f}",
             )
 
-        if average_latest_points >= 250.0:
+        if average_latest_points >= 250:
             print(f"\n\nEnvironment solved in {episode+1} episodes")
             break
 
     env.close()
 
 
-def save_model(model, output_dir: str) -> None:
+def save_checkpoint(model, output_dir: str) -> None:
     """Save the trained model, then you can reload it with from_pretrained()"""
     os.makedirs(output_dir, exist_ok=True)
     torch.save(model.state_dict(), os.path.join(output_dir, "model.pt"))
@@ -127,11 +128,15 @@ main_dqn = DQN(state_size, num_actions)
 target_dqn = DQN(state_size, num_actions)
 optimizer = torch.optim.AdamW(main_dqn.parameters(), lr=learning_rate)
 
+if resume_from_checkpoint:
+    model_path = os.path.join(output_dir, "model.pt")
+    main_dqn.from_pretrained(model_path)
+
 start = time.time()
 train_agent(epsilon_in)
 
-if save_model:
-    save_model(main_dqn, output_dir)
+if save_checkpoint:
+    save_checkpoint(main_dqn, output_dir)
 
 total_runtime = time.time() - start
 print(f"\nTotal Runtime: {total_runtime:.2f} s ({(total_runtime/60):.2f} min)")
