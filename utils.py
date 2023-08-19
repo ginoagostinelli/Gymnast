@@ -2,29 +2,18 @@ import numpy as np
 import random
 import torch
 
-# Hyperparameter
-MINIBATCH_SIZE = 64
-SOFT_UPDATE_TAU = 1e-3
-EPSILON_DECAY_RATE = 0.995
-MIN_EPSILON = 0.01
 
-
-def soft_update_target_network(main_dqn, target_dqn):
+def soft_update_target_network(main_dqn, target_dqn, soft_update_tau):
     """Update the target network's weights using soft update"""
     for target_weights, q_net_weights in zip(target_dqn.parameters(), main_dqn.parameters()):
         target_weights.data.copy_(
-            SOFT_UPDATE_TAU * q_net_weights.data + (1.0 - SOFT_UPDATE_TAU) * target_weights.data
+            soft_update_tau * q_net_weights.data + (1.0 - soft_update_tau) * target_weights.data
         )
 
 
-def check_update_conditions(timestep, update_interval, memory_buffer):
-    """Check if conditions are met for updating the network"""
-    return (timestep + 1) % update_interval == 0 and len(memory_buffer) > MINIBATCH_SIZE
-
-
-def sample_batch_from_memory(memory_buffer):
+def sample_batch_from_memory(batch_size, memory_buffer):
     """Retrieve a batch of experiences from the memory buffer"""
-    batch = random.sample(memory_buffer, k=MINIBATCH_SIZE)  # Experiences
+    batch = random.sample(memory_buffer, k=batch_size)  # Experiences
     states = torch.tensor([e.state for e in batch if e is not None], dtype=torch.float32)
     actions = torch.tensor([e.action for e in batch if e is not None], dtype=torch.float32)
     rewards = torch.tensor([e.reward for e in batch if e is not None], dtype=torch.float32)
@@ -33,9 +22,9 @@ def sample_batch_from_memory(memory_buffer):
     return states, actions, rewards, next_states, terminated
 
 
-def calculate_new_epsilon(epsilon):
+def calculate_new_epsilon(epsilon, min_epsilon, epsilon_decay_rate):
     """Calculate the new epsilon value for epsilon-greedy exploration"""
-    return max(MIN_EPSILON, EPSILON_DECAY_RATE * epsilon)
+    return max(min_epsilon, epsilon_decay_rate * epsilon)
 
 
 def choose_action(q_values, epsilon=0.0):

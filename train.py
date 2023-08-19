@@ -17,6 +17,10 @@ memory_capacity = 100_000  # size of memory buffer
 num_episodes = 2500
 max_num_timesteps = 1000
 num_points_for_average = 100
+epsilon_in = 1.0
+soft_update_tau = 1e-3
+epsilon_decay_rate = 0.995
+min_epsilon = 0.01
 
 experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "terminated"])
 
@@ -47,11 +51,10 @@ def learn_agent(experiences, discount_factor):
 
     optimizer.step()
 
-    utils.soft_update_target_network(main_dqn, target_dqn)
+    utils.soft_update_target_network(main_dqn, target_dqn, soft_update_tau)
 
 
-def train_agent():
-    epsilon = 1.0  # initial ε value for ε-greedy policy
+def train_agent(epsilon):
     total_point_history = []
 
     memory_buffer = deque(maxlen=memory_capacity)
@@ -69,10 +72,9 @@ def train_agent():
 
             memory_buffer.append(experience(state, action, reward, next_state, terminated))
 
-            update = utils.check_update_conditions(timestep, update_interval, memory_buffer)
-
-            if update:
-                experiences = utils.sample_batch_from_memory(memory_buffer)
+            # Check update conditions
+            if (timestep + 1) % update_interval == 0 and len(memory_buffer) > batch_size:
+                experiences = utils.sample_batch_from_memory(batch_size, memory_buffer)
                 learn_agent(experiences, discount_factor=discount_factor)
 
             state = next_state.copy()
@@ -83,7 +85,7 @@ def train_agent():
 
         total_point_history.append(total_reward)
         average_latest_points = np.mean(total_point_history[-num_points_for_average:])
-        epsilon = utils.calculate_new_epsilon(epsilon)
+        epsilon = utils.calculate_new_epsilon(epsilon, min_epsilon, epsilon_decay_rate)
 
         print(
             f"\rEpisode {episode+1:3d} | "
@@ -118,7 +120,7 @@ target_dqn = DQN(state_size, num_actions)
 optimizer = torch.optim.AdamW(main_dqn.parameters(), lr=learning_rate)
 
 start = time.time()
-train_agent()
+train_agent(epsilon_in)
 
 total_runtime = time.time() - start
 print(f"\nTotal Runtime: {total_runtime:.2f} s ({(total_runtime/60):.2f} min)")
