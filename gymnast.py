@@ -16,6 +16,9 @@ dqn = DQN(state_size, num_actions)
 model_path = os.path.join(output_dir, "model.pt")
 dqn.from_pretrained(model_path)
 
+n_params = sum(p.numel() for p in dqn.parameters() if p.requires_grad)
+print(f"Number of parameters: {n_params}")
+
 while True:
     state = torch.tensor(np.expand_dims(state, axis=0))
     q_values = dqn(state)
