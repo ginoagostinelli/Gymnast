@@ -1,32 +1,28 @@
 import os
-from model import DQN
-import numpy as np
-import gymnasium as gym
 import torch
+from torch import nn
 
-output_dir = os.path.join(os.path.dirname(__file__), "output")
 
-env = gym.make("LunarLander-v2", render_mode="human")
-state, info = env.reset(seed=42)
+class Gymnast(nn.Module):
+    def __init__(self, state_size, num_actions):
+        super().__init__()
 
-state_size = env.observation_space.shape[0]
-num_actions = env.action_space.n
+        self.dqn = nn.Sequential(
+            nn.Linear(state_size, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_actions),
+        )
 
-dqn = DQN(state_size, num_actions)
-model_path = os.path.join(output_dir, "model.pt")
-dqn.from_pretrained(model_path)
+    def forward(self, x):
+        return self.dqn(x)
 
-n_params = sum(p.numel() for p in dqn.parameters() if p.requires_grad)
-print(f"Number of parameters: {n_params}")
+    def from_pretrained(self, model_path: str) -> None:
+        """Load the trained model"""
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f'model not found in "{model_path}"')
 
-while True:
-    state = torch.tensor(np.expand_dims(state, axis=0))
-    q_values = dqn(state)
-    action = np.argmax(q_values.detach().numpy()[0])
-
-    state, reward, terminated, truncated, info = env.step(action)
-
-    if terminated or truncated:
-        observation, info = env.reset()
-
-env.close()
+        self.load_state_dict(torch.load(model_path))

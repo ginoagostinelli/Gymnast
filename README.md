@@ -23,5 +23,5 @@ python train.py
 ```
 Run the environment
 ```python
-python gymnast.py
+python render.py
 ```

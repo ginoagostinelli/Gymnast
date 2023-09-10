@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from collections import deque, namedtuple
 import gymnasium as gym
 
-from model import DQN
+from gymnast import Gymnast
 import utils
 
 # Hyperparameters
@@ -29,14 +29,13 @@ output_dir = os.path.join(os.path.dirname(__file__), "output")
 experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "terminated"])
 
 
-def compute_loss(experiences, discount_factor, main_dqn, target_dqn):
+def compute_loss(experiences, discount_factor, main_gymnast, target_gymnast):
     states, actions, rewards, next_states, terminated = experiences
 
-    with torch.no_grad():
-        max_qsa, _ = torch.max(target_dqn(next_states), dim=-1)
-        y_targets = rewards + (discount_factor * max_qsa * (1 - terminated))
+    max_qsa, _ = torch.max(target_gymnast(next_states), dim=-1)
+    y_targets = rewards + (discount_factor * max_qsa * (1 - terminated))
 
-    q_values = main_dqn(states)
+    q_values = main_gymnast(states)
 
     actions = actions.to(torch.int64)
     selected_q_values = torch.gather(q_values, 1, actions.unsqueeze(1)).squeeze()
@@ -47,7 +46,7 @@ def compute_loss(experiences, discount_factor, main_dqn, target_dqn):
 
 
 def learn_agent(experiences, discount_factor):
-    loss = compute_loss(experiences, discount_factor, main_dqn, target_dqn)
+    loss = compute_loss(experiences, discount_factor, main_gymnast, target_gymnast)
 
     optimizer.zero_grad()
 
@@ -55,21 +54,21 @@ def learn_agent(experiences, discount_factor):
 
     optimizer.step()
 
-    utils.soft_update_target_network(main_dqn, target_dqn, soft_update_tau)
+    utils.soft_update_target_network(main_gymnast, target_gymnast, soft_update_tau)
 
 
 def train_agent(epsilon):
     total_point_history = []
 
     memory_buffer = deque(maxlen=memory_capacity)
-    target_dqn.load_state_dict(main_dqn.state_dict())
+    target_gymnast.load_state_dict(main_gymnast.state_dict())
 
     for episode in range(num_episodes):
         state, info = env.reset()
         total_reward = 0
         for timestep in range(max_num_timesteps):
             state_tensor = torch.tensor(np.expand_dims(state, axis=0))
-            q_values = main_dqn(state_tensor)
+            q_values = main_gymnast(state_tensor)
             action = utils.choose_action(q_values, epsilon)
 
             next_state, reward, terminated, _, _ = env.step(action)
@@ -124,19 +123,19 @@ state, info = env.reset(seed=42)
 state_size = env.observation_space.shape[0]
 num_actions = env.action_space.n
 
-main_dqn = DQN(state_size, num_actions)
-target_dqn = DQN(state_size, num_actions)
-optimizer = torch.optim.AdamW(main_dqn.parameters(), lr=learning_rate)
+main_gymnast = Gymnast(state_size, num_actions)
+target_gymnast = Gymnast(state_size, num_actions)
+optimizer = torch.optim.AdamW(main_gymnast.parameters(), lr=learning_rate)
 
 if resume_from_checkpoint:
     model_path = os.path.join(output_dir, "model.pt")
-    main_dqn.from_pretrained(model_path)
+    main_gymnast.from_pretrained(model_path)
 
 start = time.time()
 train_agent(epsilon_in)
 
 if save_checkpoint:
-    save_checkpoint(main_dqn, output_dir)
+    save_checkpoint(main_gymnast, output_dir)
 
 total_runtime = time.time() - start
 print(f"\nTotal Runtime: {total_runtime:.2f} s ({(total_runtime/60):.2f} min)")
