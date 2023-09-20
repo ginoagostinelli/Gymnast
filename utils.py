@@ -14,11 +14,25 @@ def soft_update_target_network(main_gymnast, target_gymnast, soft_update_tau):
 def sample_batch_from_memory(batch_size, memory_buffer):
     """Retrieve a batch of experiences from the memory buffer"""
     batch = random.sample(memory_buffer, k=batch_size)  # Experiences
-    states = torch.tensor([e.state for e in batch if e is not None], dtype=torch.float32)
-    actions = torch.tensor([e.action for e in batch if e is not None], dtype=torch.float32)
-    rewards = torch.tensor([e.reward for e in batch if e is not None], dtype=torch.float32)
-    next_states = torch.tensor([e.next_state for e in batch if e is not None], dtype=torch.float32)
-    terminated = torch.tensor([e.terminated for e in batch if e is not None], dtype=torch.float32)
+
+    # Collect data into separate lists
+    states_list, actions_list, rewards_list, next_states_list, terminated_list = [], [], [], [], []
+
+    for e in batch:
+        if e is not None:
+            states_list.append(e.state)
+            actions_list.append(e.action)
+            rewards_list.append(e.reward)
+            next_states_list.append(e.next_state)
+            terminated_list.append(e.terminated)
+
+    # Convert the lists to numpy arrays
+    states = torch.tensor(np.array(states_list), dtype=torch.float32)
+    actions = torch.tensor(np.array(actions_list), dtype=torch.float32)
+    rewards = torch.tensor(np.array(rewards_list), dtype=torch.float32)
+    next_states = torch.tensor(np.array(next_states_list), dtype=torch.float32)
+    terminated = torch.tensor(np.array(terminated_list), dtype=torch.float32)
+
     return states, actions, rewards, next_states, terminated
 
 
