@@ -10,6 +10,8 @@ from gymnast import Gymnast
 import utils
 
 # Hyperparameters
+environment_name = "LunarLander-v2"
+points_to_win = 250
 batch_size = 64
 discount_factor = 0.995
 learning_rate = 1e-3
@@ -57,7 +59,7 @@ def learn_agent(experiences, discount_factor):
     utils.soft_update_target_network(main_gymnast, target_gymnast, soft_update_tau)
 
 
-def train_agent(epsilon):
+def train_agent(epsilon, num_actions):
     total_point_history = []
 
     memory_buffer = deque(maxlen=memory_capacity)
@@ -68,8 +70,9 @@ def train_agent(epsilon):
         total_reward = 0
         for timestep in range(max_num_timesteps):
             state_tensor = torch.tensor(np.expand_dims(state, axis=0))
+
             q_values = main_gymnast(state_tensor)
-            action = utils.choose_action(q_values, epsilon)
+            action = utils.choose_action(q_values, epsilon, num_actions)
 
             next_state, reward, terminated, _, _ = env.step(action)
 
@@ -104,7 +107,7 @@ def train_agent(epsilon):
                 f"Epsilon: {epsilon:.4f}",
             )
 
-        if average_latest_points >= 250:
+        if average_latest_points >= points_to_win:
             print(f"\n\nEnvironment solved in {episode+1} episodes")
             break
 
@@ -117,7 +120,8 @@ def save_checkpoint(model, output_dir: str) -> None:
     torch.save(model.state_dict(), os.path.join(output_dir, "model.pt"))
 
 
-env = gym.make("LunarLander-v2")
+env = gym.make(environment_name)
+
 state, info = env.reset(seed=42)
 
 state_size = env.observation_space.shape[0]
@@ -132,7 +136,7 @@ if resume_from_checkpoint:
     main_gymnast.from_pretrained(model_path)
 
 start = time.time()
-train_agent(epsilon_in)
+train_agent(epsilon_in, num_actions)
 
 if save_checkpoint:
     save_checkpoint(main_gymnast, output_dir)

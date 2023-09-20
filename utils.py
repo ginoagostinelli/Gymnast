@@ -3,9 +3,9 @@ import random
 import torch
 
 
-def soft_update_target_network(main_dqn, target_dqn, soft_update_tau):
+def soft_update_target_network(main_gymnast, target_gymnast, soft_update_tau):
     """Update the target network's weights using soft update"""
-    for target_weights, q_net_weights in zip(target_dqn.parameters(), main_dqn.parameters()):
+    for target_weights, q_net_weights in zip(target_gymnast.parameters(), main_gymnast.parameters()):
         target_weights.data.copy_(
             soft_update_tau * q_net_weights.data + (1.0 - soft_update_tau) * target_weights.data
         )
@@ -27,9 +27,9 @@ def calculate_new_epsilon(epsilon, min_epsilon, epsilon_decay_rate):
     return max(min_epsilon, epsilon_decay_rate * epsilon)
 
 
-def choose_action(q_values, epsilon=0.0):
+def choose_action(q_values, epsilon=0.0, num_actions=None):
     """Choose an action using epsilon-greedy exploration"""
     if random.random() > epsilon:
         return np.argmax(q_values.detach().numpy()[0])
     else:
-        return random.choice(np.arange(4))
+        return random.choice(np.arange(num_actions))
